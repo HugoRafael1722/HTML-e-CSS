@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Para Você — Surpresa</title>
+<style>
+  :root{
+    --bg:#0f1020;
+    --card:#0f1724;
+    --accent:#ff5c8a;
+    --accent2:#ff9bb3;
+    --text:#f7f7fb;
+    --muted:#bfc7d6;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;color:var(--text);background:linear-gradient(180deg,#071025 0%, #0f1020 100%);}
+  .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:36px;}
+  .card{width:100%;max-width:920px;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));border-radius:18px;padding:28px;box-shadow:0 10px 30px rgba(3,6,23,0.7);position:relative;overflow:hidden;}
+  header.top{display:flex;gap:16px;align-items:center;}
+  .logo{width:72px;height:72px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:28px;color:white;}
+  h1{margin:0;font-size:22px}
+  p.lead{margin:4px 0 0;color:var(--muted)}
+  .controls{margin-top:22px;display:flex;gap:12px;align-items:center;}
+  button.btn{background:linear-gradient(90deg,var(--accent),var(--accent2));border:0;color:white;padding:10px 16px;border-radius:12px;font-weight:600;cursor:pointer;}
+  button.btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--text);}
+  .stage{margin-top:22px;padding:20px;background:rgba(255,255,255,0.02);border-radius:12px;min-height:220px;display:flex;flex-direction:column;gap:12px;align-items:flex-start;}
+  .heart{display:inline-flex;align-items:center;gap:10px;font-weight:700;background:linear-gradient(90deg, rgba(255,92,138,0.12), rgba(255,155,179,0.04));padding:8px 12px;border-radius:999px;color:var(--accent);}
+  .message{font-size:18px;line-height:1.5;color:var(--text);white-space:pre-wrap;max-width:780px;}
+  .meta{margin-top:auto;display:flex;gap:12px;align-items:center;justify-content:space-between;width:100%}
+  .muted{color:var(--muted);font-size:13px}
+  .float-layer{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  .heart-bubble{position:absolute;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;color:white;background:var(--accent);opacity:0.95;}
+  canvas.confetti{position:absolute;inset:0;pointer-events:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <header class="top">
+      <div class="logo">♥</div>
+      <div>
+        <h1>Para você, meu amor</h1>
+        <p class="lead">Surpresa criada com carinho — clique em "Abrir Surpresa".</p>
+      </div>
+    </header>
+
+    <div class="controls">
+      <button class="btn" id="openBtn">💌 Abrir Surpresa</button>
+      <button class="btn ghost" id="toggleMusicBtn">▶ Tocar/Pausar Música</button>
+    </div>
+
+    <div class="stage">
+      <div class="heart">Para: <span id="toName">Ana Beatriz</span></div>
+      <div class="message" id="message"></div>
+      <div class="meta">
+        <div class="muted" id="dateText"></div>
+        <div class="muted">Com amor, <strong id="fromName">Hugo</strong></div>
+      </div>
+    </div>
+
+    <div class="float-layer" id="floatLayer"></div>
+    <canvas class="confetti" id="confettiCanvas"></canvas>
+  </div>
+</div>
+
+<script>
+/* CONFIGURAÇÕES */
+const TO_NAME = "Ana Beatriz";
+const FROM_NAME = "Hugo";
+const MESSAGE_TEXT = [
+  "Ana,",
+  "",
+  "Desde o momento em que você entrou na minha vida, tudo ficou mais bonito.",
+  "Seu sorriso ilumina meus dias, seu carinho me dá força, e seu amor me completa.",
+  "",
+  "Quero estar ao seu lado em cada passo, em cada sonho, em cada momento.",
+  "Com você, a vida é poesia, é alegria, é amor verdadeiro.",
+  "",
+  "Eu te amo hoje e para sempre.",
+  "",
+  "— Hugo, Cu."
+].join("\n");
+
+const MUSIC_SRC = "dontwait.mp3"; // nome do arquivo de música
+const HEART_COUNT = 14;
+const CONFETTI_COUNT = 90;
+
+document.getElementById('toName').textContent = TO_NAME;
+document.getElementById('fromName').textContent = FROM_NAME;
+document.getElementById('dateText').textContent = new Date().toLocaleDateString();
+
+const openBtn = document.getElementById('openBtn');
+const messageEl = document.getElementById('message');
+const floatLayer = document.getElementById('floatLayer');
+const confettiCanvas = document.getElementById('confettiCanvas');
+const toggleMusicBtn = document.getElementById('toggleMusicBtn');
+
+/* música */
+const audio = new Audio(MUSIC_SRC);
+audio.loop = true;
+
+/* digitação */
+function typeText(el, text, delay=22){
+  el.textContent = "";
+  return new Promise(resolve=>{
+    let i=0;
+    function step(){
+      if(i>=text.length){resolve();return;}
+      el.textContent += text[i++];
+      setTimeout(step, delay+(text[i-1]==="\n"?120:0));
+    }
+    step();
+  });
+}
+
+/* confetes */
+function startConfetti(canvas, count){
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width = canvas.clientWidth;
+  const H = canvas.height = canvas.clientHeight;
+  const pieces=[];
+  for(let i=0;i<count;i++){
+    pieces.push({x:Math.random()*W,y:Math.random()*H-H,vx:(Math.random()-0.5)*2.4,vy:Math.random()*3+2,r:Math.random()*6+4,color:`hsl(${Math.floor(Math.random()*360)},85%,65%)`,rot:Math.random()*360,vr:(Math.random()-0.5)*6});
+  }
+  function frame(){
+    ctx.clearRect(0,0,W,H);
+    for(const p of pieces){
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.03; p.rot+=p.vr;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180);
+      ctx.fillStyle=p.color; ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r*0.6); ctx.restore();
+      if(p.y>H+40){p.y=-20;p.x=Math.random()*W;p.vy=Math.random()*3+2;}
+    }
+    requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+/* corações */
+function spawnHearts(container,n){
+  container.innerHTML="";
+  for(let i=0;i<n;i++){
+    const el=document.createElement('div');
+    el.className='heart-bubble'; el.textContent="❤";
+    el.style.left=(Math.random()*100)+"%";
+    el.style.bottom=(-20-Math.random()*40)+"px";
+    container.appendChild(el);
+    el.animate([
+      { transform:'translateY(0) scale(0.9)', opacity:1 },
+      { transform:`translateY(-${200+Math.random()*380}px) scale(1.1)`, opacity:0 }
+    ],{duration:5000+Math.random()*7000,delay:Math.random()*800,iterations:Infinity});
+  }
+}
+
+/* abrir surpresa */
+openBtn.addEventListener('click', async ()=>{
+  openBtn.disabled=true; openBtn.textContent="Abrindo...";
+  spawnHearts(floatLayer, HEART_COUNT);
+  startConfetti(confettiCanvas, CONFETTI_COUNT);
+  audio.play();
+  await typeText(messageEl, MESSAGE_TEXT);
+  openBtn.textContent="Surpresa aberta 💖";
+});
+
+/* tocar/pausar música */
+toggleMusicBtn.addEventListener('click', ()=>{
+  if(audio.paused){audio.play(); toggleMusicBtn.textContent="⏸ Pausar Música";}
+  else{audio.pause(); toggleMusicBtn.textContent="▶ Tocar Música";}
+});
+</script>
+</body>
+</html>
